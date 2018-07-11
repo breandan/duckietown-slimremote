@@ -1,9 +1,11 @@
 # stretch because that's the same as the hypriotOS image
 FROM  resin/rpi-raspbian:stretch
 
-COPY bin/ /usr/bin/
-
 RUN [ "cross-build-start" ]
+
+RUN ls
+
+COPY ./bin/ /usr/bin/
 
 RUN apt-get update && \
     apt-get install --no-install-recommends -y build-essential git wget cmake pkg-config \

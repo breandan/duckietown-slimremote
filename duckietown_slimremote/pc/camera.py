@@ -1,15 +1,16 @@
-import cv2
 import time
 from queue import Queue, LifoQueue
 from threading import Thread
 import numpy as np
 import zmq
 import matplotlib
-matplotlib.use('TkAgg') #needed for tkinter GUI
+
+# matplotlib.use('TkAgg')  # needed for tkinter GUI
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from duckietown_slimremote.helpers import timer
-from duckietown_slimremote.networking import make_sub_socket, recv_array
+from duckietown_slimremote.networking import make_sub_socket, recv_gym
 
 
 class ThreadedSubCamera(Thread):
@@ -28,13 +29,13 @@ class ThreadedSubCamera(Thread):
         timings = []
         start = time.time()
         while keep_running:
-            img = recv_array(self.sock)
+            img, rew, done = recv_gym(self.sock)
 
             timings, start = timer(timings, start)
 
             if not self.queue.empty():
                 self.queue.get()  # discard last img, only ever keep one
-            self.queue.put(img)
+            self.queue.put((img, rew, done))
 
 
 class SubCameraMaster():
@@ -44,18 +45,20 @@ class SubCameraMaster():
         self.cam_thread = ThreadedSubCamera(self.queue, host)
         self.cam_thread.daemon = True
         self.cam_thread.start()
+
+        # need caching for non-blocking calls (in case the server has a hickup)
         self.last_img = None
+        self.last_rew = None
+        self.last_done = None
 
-    def get_img_blocking(self):
-        self.last_img = self.queue.get(block=True)  # wait for image, blocking
-        return self.last_img
+    def get_gym_blocking(self):
+        self.last_img, self.last_rew, self.last_done = self.queue.get(block=True)  # wait for image, blocking
+        return (self.last_img, self.last_rew, self.last_done)
 
-    def get_img_nonblocking(self):
+    def get_gym_nonblocking(self):
         if not self.queue.empty():
-            self.last_img = self.queue.get(block=False)  # TO TEST: might fail
-            return self.last_img
-        else:
-            return None
+            self.last_img, self.last_rew, self.last_done = self.queue.get(block=False)  # TO TEST: might fail
+        return (self.last_img, self.last_rew, self.last_done)
 
 
 def cam_window_init():
@@ -74,11 +77,12 @@ def cam_window_update(img, img_container, img_window):
     plt.pause(0.001)
 
 
-def cam_windows_init_opencv(res=(160, 120, 3)):
-    cv2.imshow('livecam', np.zeros(res))
-    cv2.waitKey(1)
-
-
-def cam_windows_update_opencv(img):
-    cv2.imshow('livecam', img[:,:,::-1])
-    cv2.waitKey(1)
+# def cam_windows_init_opencv(res=(160, 120, 3)):
+#     import cv2
+#     cv2.imshow('livecam', np.zeros(res))
+#     cv2.waitKey(1)
+#
+#
+# def cam_windows_update_opencv(img):
+#     cv2.imshow('livecam', img[:, :, ::-1])
+#     cv2.waitKey(1)

@@ -6,7 +6,7 @@ import numpy as np
 import zmq
 
 from duckietown_slimremote.helpers import get_right_queue
-from duckietown_slimremote.networking import make_pub_socket, send_array
+from duckietown_slimremote.networking import make_pub_socket, send_gym
 from duckietown_slimremote.robot.constants import CAM_FAILURE_COUNTER
 
 
@@ -85,7 +85,9 @@ def make_async_camera(base):
                 # the pub / send_array method only works once the first subscriber is connected
                 if self.publisher_socket is not None:
                     img = self.cam.observe()
-                    send_array(self.publisher_socket, img)
+                    # on the real robot we are sending 0 reward, in simulation the reward is a float
+                    # we also send done=False because the real robot doesn't know when to stop ^^
+                    send_gym(self.publisher_socket, img, 0, False)
 
     queue = get_right_queue(base)
 

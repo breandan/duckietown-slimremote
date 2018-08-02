@@ -1,10 +1,12 @@
-FROM duckietown/slimremote-base
+FROM resin/raspberrypi3-python:3.4
 
 RUN [ "cross-build-start" ]
 
-RUN git clone https://github.com/duckietown/duckietown-slimremote.git && \
-    cd duckietown-slimremote && \
-    pip3 install -e .
+RUN pip3 install opencv-python opencv-contrib-python --index-url https://www.piwheels.org/simple
+
+COPY . duckietown-slimremote
+
+RUN pip3 install -e duckietown-slimremote/
 
 RUN [ "cross-build-end" ]
 
